@@ -10,6 +10,7 @@
   - [What is Ansible and how does it work?](#what-is-ansible-and-how-does-it-work)
     - [Key Features:](#key-features)
   - [Who is using IaC and Ansible in the industry?](#who-is-using-iac-and-ansible-in-the-industry)
+- [Steps to install terraform](#steps-to-install-terraform)
 
 
 ## What is IaC?
@@ -53,3 +54,8 @@ Ansible is an open-source automation tool used for configuration management, app
 - **Tech companies** like Google, Facebook, and Netflix use IaC to scale their massive infrastructure automatically.
 - **Enterprises** like banks, e-commerce platforms, and health-tech companies use Ansible to automate their operations.
 - **Startups** also leverage IaC to quickly deploy and manage their cloud infrastructure.
+
+# Steps to install terraform 
+1) Go on the terraform website and select the **Windows AMD64**.
+2) This will download as a zip you can then extract this and add it to a `C:\my-cmd-line-tools`.
+3) Search on the search below **Edit System Environment Variables** and add a PATH env variable with the path to the terraform file. 
