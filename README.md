@@ -19,6 +19,13 @@
   - [3. Set Up Ansible on the Controller Instance](#3-set-up-ansible-on-the-controller-instance)
   - [4. Configure Ansible Hosts](#4-configure-ansible-hosts)
   - [5. Create and Run an Ansible Playbook to Install NGINX](#5-create-and-run-an-ansible-playbook-to-install-nginx)
+  - [Use Ad-Hoc command to transfer key to target node](#use-ad-hoc-command-to-transfer-key-to-target-node)
+  - [Copying a file using the copy module](#copying-a-file-using-the-copy-module)
+  - [YAML playbook to start app with npm:](#yaml-playbook-to-start-app-with-npm)
+  - [YAML playbook to start app with pm2:](#yaml-playbook-to-start-app-with-pm2)
+  - [Script for YAML playbook to run with DB and /posts page working](#script-for-yaml-playbook-to-run-with-db-and-posts-page-working)
+    - [Blockers](#blockers)
+  - [Master Playbook](#master-playbook)
 - [Steps to install terraform](#steps-to-install-terraform)
 - [Terraform](#terraform)
   - [What is Terraform?](#what-is-terraform)
@@ -109,6 +116,7 @@ This diagram plans everything.
 - **Key Pair**: Use the key pair you typically use for AWS instances
 - **Image**: Ubuntu Server 22.04 LTS (free tier eligible)
 - **Additional Setup**: Leave user data and scripts blank; do not run any.
+- All playbooks will run here. 
 
 ### Ansible Target Node Instance (will run the app):
 - **Name**: `tech2xx-priyan-ubuntu-2204-ansible-target-node-app`
@@ -208,7 +216,51 @@ To create a YAML playbook for NGINX installation:
    ansible-playbook install_nginx.yml
    ```
 
+## Use Ad-Hoc command to transfer key to target node
+*  `ansible ec2-app-instance -m ansible.builtin.copy -a "src=~/.ssh/tech264-priyan-aws-key.pem dest=/home/ubuntu/.ssh/tech264-priyan-aws-key.pem mode=0400"`
 
+   * ec2-app-instance: The name of your target node in your Ansible inventory. 
+   * `-m ansible.builtin.copy: Specifies the copy module from the ansible.builtin collection.
+   * -a "src=~/.ssh/tech264-priyan-aws-key.pem dest=/home/ubuntu/.ssh/tech264-priyan-aws-key.pem mode=0600":
+   * src: Path to the private key on the Ansible controller.
+   * dest: Full path on the target node where the key will be copied.
+   * `mode=0400`: Sets secure file permissions so that only the owner can read the file.
+## Copying a file using the copy module
+```yaml
+---
+- name: Copy testfile.txt from home directory to the target node
+  hosts: web
+  tasks:
+    - name: Copy testfile.txt to the target node
+      ansible.builtin.copy:
+        src: /home/ubuntu/testfile.txt
+        dest: /home/ubuntu/testfile.txt
+```
+* You then run your playbook. `ansible-playbook name-of-playbook.yml`
+  
+## YAML playbook to start app with npm: 
+[YAML Playbook for npm start](prov_app_with_npm_start.yml). 
+
+## YAML playbook to start app with pm2:
+[YAML Playbook for pm2 start](prov_app_with_pm2_start.yml). This includes the configuration of the reverse proxy. 
+
+## Script for YAML playbook to run with DB and /posts page working
+
+[With app and DB and posts page working](prov-app-all.yml)
+* For this you would need to manually export the environment variable to the **app target node**. `export DB_HOST=mongodb://172.31.63.195:27017/posts` - this goes straight into the app VM.
+* And then add it to the script too. `line: 'DB_HOST=mongodb://172.31.63.195:27017/posts'`
+### Blockers
+1. Make sure you go to your app VM and check that the folders are copied over. 
+2. Kill the processes before running it. Remember the `pa aux | grep pm2` and then kill the processes running. You can leave the one that has `-- colour`. Then run the `ansible-playbook name-of-playbook.yml`. 
+3. Make sure you order your Git Bash Tabs. 
+4. When exporting the environment variable, make sure you add the private IP for the **DB target node**. 
+## Master Playbook
+
+```yaml
+---
+    - import_playbook: provision_app_with_npm_start.yml
+    - import_playbook: prov_db.yml
+```
 # Steps to install terraform 
 1) Go on the terraform website and select the **Windows AMD64**.
 2) This will download as a zip you can then extract this and add it to a `C:\my-cmd-line-tools`.

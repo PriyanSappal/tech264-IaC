@@ -1,0 +1,125 @@
+---
+- name: Provision app with NodeJS 20 and start with npm
+  hosts: web                   # Replace with your target node inventory group or specific host
+  become: yes                  # Use sudo privileges
+
+  #playbook to intall mongodb in database VM
+
+
+#where to install the db
+
+  gather_facts: yes
+  become: true
+  tasks:
+  - name: Import the MongoDB public key
+    ansible.builtin.apt_key:
+      url: https://www.mongodb.org/static/pgp/server-7.0.asc
+      state: present
+
+  - name: Add the MongoDB repository
+    ansible.builtin.apt_repository:
+      repo: "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu {{ ansible_distribution_release }}/mongodb-org/7.0 multiverse"
+      state: present
+      update_cache: yes
+
+  - name: Install MongoDB 7.0.6
+    ansible.builtin.apt:
+      name: mongodb-org=7.0.6
+      state: present
+      update_cache: yes
+
+  - name: Ensure MongoDB service is started and enabled
+    service:
+      name: mongod
+      state: started
+      enabled: yes
+
+  - name: Configure MongoDB to allow connections from any IP
+    ansible.builtin.lineinfile:
+       path: /etc/mongod.conf
+       regexp: '^  bindIp:'
+       line: '  bindIp: 0.0.0.0'
+       insertafter: '^# network interfaces'
+
+
+  - name: restart mongodb
+    service:
+       name: mongod
+       state: restarted
+
+
+  tasks:
+    - name: Install curl (required to add NodeSource repository)
+      ansible.builtin.apt:
+        update_cache: yes
+        name: curl
+        state: present
+
+    - name: Add NodeSource repository for Node.js 20
+      ansible.builtin.shell:
+        curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+
+
+    - name: Install Node.js 20
+      ansible.builtin.apt:
+        name: nodejs
+        state: present
+
+    - name: Verify Node.js version
+      ansible.builtin.command: node -v
+      register: node_version
+
+    - name: Print Node.js version
+      ansible.builtin.debug:
+        var: node_version.stdout
+
+    - name: Install PM2 globally
+      ansible.builtin.npm:
+        name: pm2
+        global: yes
+        state: present
+
+    - name: Clone the Git repository
+      ansible.builtin.git:
+        repo: 'https://github.com/PriyanSappal/tech264-sparta-app.git'
+        dest: /home/ubuntu/repo                             # Destination path on the target node
+        version: main                                           # Branch to clone (e.g., main or master)
+        force: yes
+
+    - name: Create an environment variable
+      ansible.builtin.lineinfile:
+        path: /etc/environment
+        line: 'DB_HOST=mongodb://172.31.63.195:27017/posts'
+        state: present
+
+    - name: Install packages based on package.json
+      community.general.npm:
+        path: /home/ubuntu/repo/app/
+
+
+    - name: Stop the app with pm2
+      ansible.builtin.shell: pm2 stop all || true
+      args:
+        chdir: /home/ubuntu/repo/app # Path to the 'app' folder on the target node
+      tags: pm2_stop
+
+    - name: Start the app with pm2
+      ansible.builtin.shell: pm2 start app.js
+      args:
+        chdir: /home/ubuntu/repo/app # Path to the 'app' folder on the target node
+      tags: pm2_start
+
+    - name: Install Nginx
+      ansible.builtin.apt:
+        name: nginx
+        state: present
+
+    - name: Modify Nginx default configuration to act as a reverse proxy
+      ansible.builtin.shell: sed -i 's|try_files $uri $uri/ =404;|proxy_pass http://localhost:3000;|' /etc/nginx/sites-available/default
+
+    - name: Restart nginx
+      ansible.builtin.shell: systemctl restart nginx
+
+
+
+

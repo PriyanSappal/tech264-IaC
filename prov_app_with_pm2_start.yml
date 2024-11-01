@@ -1,0 +1,73 @@
+---
+- name: Provision app with NodeJS 20 and start with npm
+  hosts: web                   # Replace with your target node inventory group or specific host
+  become: yes                  # Use sudo privileges
+
+  tasks:
+    - name: Install curl (required to add NodeSource repository)
+      ansible.builtin.apt:
+        update_cache: yes
+        name: curl
+        state: present
+
+    - name: Add NodeSource repository for Node.js 20
+      ansible.builtin.shell:
+        curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+
+    
+    - name: Install Node.js 20
+     ansible.builtin.apt:
+        name: nodejs
+        state: present
+
+    - name: Verify Node.js version
+      ansible.builtin.command: node -v
+      register: node_version
+
+    - name: Print Node.js version
+      ansible.builtin.debug:
+        var: node_version.stdout
+
+    - name: Install PM2 globally
+      ansible.builtin.npm:
+        name: pm2
+        global: yes
+        state: present
+        
+    - name: Clone the Git repository
+      ansible.builtin.git:
+        repo: 'https://github.com/PriyanSappal/tech264-sparta-app.git'
+        dest: /home/ubuntu/repo                             # Destination path on the target node
+        version: main                                           # Branch to clone (e.g., main or master)
+        force: yes
+
+    - name: 
+      community.general.npm:
+        path: /home/ubuntu/repo/app/
+
+
+    - name: Stop the app with pm2
+      ansible.builtin.shell: 
+      pm2 stop all 
+      args:
+        chdir: /home/ubuntu/repo/app # Path to the 'app' folder on the target node
+      tags: pm2_stop
+
+    - name: Start the app with pm2
+      ansible.builtin.shell: 
+      pm2 start app.js 
+      args:
+        chdir: /home/ubuntu/repo/app # Path to the 'app' folder on the target node
+      tags: pm2_start
+
+    - name: Install Nginx
+      ansible.builtin.apt:
+        name: nginx
+        state: present
+
+    - name: Modify Nginx default configuration to act as a reverse proxy
+      ansible.builtin.shell: sed -i 's|try_files $uri $uri/ =404;|proxy_pass http://localhost:3000;|' /etc/nginx/sites-availabl>
+
+    - name: Restart nginx
+      ansible.builtin.shell: systemctl restart nginx
+
