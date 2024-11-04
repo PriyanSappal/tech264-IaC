@@ -23,6 +23,7 @@
   - [Copying a file using the copy module](#copying-a-file-using-the-copy-module)
   - [YAML playbook to start app with npm:](#yaml-playbook-to-start-app-with-npm)
   - [YAML playbook to start app with pm2:](#yaml-playbook-to-start-app-with-pm2)
+  - [YAML playbook for DB:](#yaml-playbook-for-db)
   - [Script for YAML playbook to run with DB and /posts page working](#script-for-yaml-playbook-to-run-with-db-and-posts-page-working)
     - [Blockers](#blockers)
   - [Master Playbook](#master-playbook)
@@ -243,23 +244,34 @@ To create a YAML playbook for NGINX installation:
 
 ## YAML playbook to start app with pm2:
 [YAML Playbook for pm2 start](prov_app_with_pm2_start.yml). This includes the configuration of the reverse proxy. 
+* You would need to stop and start the app. Just to stop the previous resources. For this you need to add `|| true` because it will crash if there are no processes running.
+* We use `pm2` to access the terminal after running it. `npm` will not allow us to do this. 
 
+## YAML playbook for DB:
+[YAML playbook for DB](prov-db.yml). 
+* `ansible db  -a "grep 'bindIp' /etc/mongod.conf"` use this to check if the `bindIP` has changed. 
+* `ansible db  -a "systemctl status mongod"` use this to check the status of **MongoDB**. 
+  
 ## Script for YAML playbook to run with DB and /posts page working
 
 [With app and DB and posts page working](prov-app-all.yml)
-* For this you would need to manually export the environment variable to the **app target node**. `export DB_HOST=mongodb://172.31.63.195:27017/posts` - this goes straight into the app VM.
-* And then add it to the script too. `line: 'DB_HOST=mongodb://172.31.63.195:27017/posts'`
+* Testing (this is manual)For this you would need to manually export the environment variable to the **app target node**. `export DB_HOST=mongodb://172.31.63.195:27017/posts` - this goes straight into the app VM.
+* And then add it to the script too. `line: 'DB_HOST=mongodb://172.31.63.195:27017/posts'`. 
+   
 ### Blockers
 1. Make sure you go to your app VM and check that the folders are copied over. 
 2. Kill the processes before running it. Remember the `pa aux | grep pm2` and then kill the processes running. You can leave the one that has `-- colour`. Then run the `ansible-playbook name-of-playbook.yml`. 
 3. Make sure you order your Git Bash Tabs. 
 4. When exporting the environment variable, make sure you add the private IP for the **DB target node**. 
+5. When starting from fresh and making new target nodes, you would need to seed the database, using `node seed.js`.
+6. Try rebooting the instances or even restarting but you need to make sure that in your **hosts** file you change the *Public IP address* under `ansible_host`.  
+   
 ## Master Playbook
 
 ```yaml
 ---
-    - import_playbook: provision_app_with_npm_start.yml
     - import_playbook: prov_db.yml
+    - import_playbook: provision_app_with_npm_start.yml
 ```
 # Steps to install terraform 
 1) Go on the terraform website and select the **Windows AMD64**.
