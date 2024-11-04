@@ -4,9 +4,11 @@
 ---
 - name: Provision DB
   hosts: db                   # Replace with your target node inventory group o>
-  become: yes                  # Use sudo privileges
+  become: yes                  # Use sudo privileges - for best practices you can make become: no/false for anything that
+  # sudo privileges (anything that is not installing).
 
   #playbook to intall mongodb in database VM
+# This can be accessed by any of the tasks. 
 
 
 #where to install the db
@@ -21,7 +23,7 @@
 
   - name: Add the MongoDB repository
     ansible.builtin.apt_repository:
-      repo: "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu {{ an>
+      repo: "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu {{ ansible_distribution_release }}/mongodb-org/7.0 multiverse"
       state: present
       update_cache: yes
 
@@ -53,7 +55,8 @@
 - name: Provision app
   hosts: web
   become: yes
-
+# environment:
+  # DB_HOST: mongodb://172.31.19.27:27017/posts
   tasks:
     - name: Install curl (required to add NodeSource repository)
       ansible.builtin.apt:
@@ -126,7 +129,7 @@
         state: present
 
     - name: Modify Nginx default configuration to act as a reverse proxy
-      ansible.builtin.shell: sed -i 's|try_files $uri $uri/ =404;|proxy_pass ht>
+      ansible.builtin.shell: sed -i 's|try_files $uri $uri/ =404;|proxy_pass http://localhost:3000;|' /etc/nginx/sites-available/default
 
     - name: Restart nginx
       ansible.builtin.shell: systemctl restart nginx

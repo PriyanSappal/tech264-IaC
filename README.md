@@ -270,7 +270,10 @@ To create a YAML playbook for NGINX installation:
 
 ```yaml
 ---
+    - name: DB provision
     - import_playbook: prov_db.yml
+
+    - name: App provision
     - import_playbook: provision_app_with_npm_start.yml
 ```
 # Steps to install terraform 
